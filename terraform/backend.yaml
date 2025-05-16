@@ -1,14 +1,14 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend-deployment
+  name: my-backend-deployment
   labels:
-    app: backend
+    app: backend-app
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: backend
+      app: backend-app
   template:
     metadata:
       labels:
@@ -57,18 +57,18 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: postgres-deployment
+  name: my-postgres-deployment
   labels:
     app: postgres
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: postgres
+      app: postgres-app
   template:
     metadata:
       labels:
-        app: postgres
+        app: postgres-app
     spec:
       containers:
       - name: postgres
