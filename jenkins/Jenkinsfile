@@ -1,11 +1,30 @@
 pipeline {
   agent any
 
+  environment {
+    KUBECONFIG = 'C:\\Users\\pc\\.kube\\config'
+  }
+
   stages {
-    stage('Deploy to Kubernetes') {
+    stage('Checkout') {
       steps {
-        sh 'kubectl apply -f k8s/frontend.yaml'
-        sh 'kubectl apply -f k8s/backend.yaml'
+        checkout scm
+      }
+    }
+
+    stage('Terraform Init') {
+      steps {
+        dir('terraform') {
+          sh 'terraform init'
+        }
+      }
+    }
+
+    stage('Terraform Apply') {
+      steps {
+        dir('terraform') {
+          sh 'terraform apply -auto-approve'
+        }
       }
     }
   }
