@@ -12,22 +12,22 @@ spec:
   template:
     metadata:
       labels:
-        app: backend
+        app: backend-app   # <-- correction ici
     spec:
       containers:
       - name: backend
-        image: babs32/projetfilrouge_backend  # Remplacez par l'image de votre backend
+        image: babs32/projetfilrouge_backend
         ports:
-        - containerPort: 8080         # Le port sur lequel votre backend écoute
+        - containerPort: 8080
         env:
         - name: DB_HOST
-          value: "postgres-service"  # Nom du service PostgreSQL
+          value: "postgres-service"
         - name: DB_PORT
           value: "5432"
         - name: DB_USER
           valueFrom:
             secretKeyRef:
-              name: postgres-secret   # Utilisation de secrets pour les informations sensibles
+              name: postgres-secret
               key: username
         - name: DB_PASSWORD
           valueFrom:
@@ -35,70 +35,6 @@ spec:
               name: postgres-secret
               key: password
         - name: DB_NAME
-          value: "mydb"  # Nom de la base de données
+          value: "mydb"
         - name: DB_SSLMODE
-          value: "disable"  # Vous pouvez configurer SSL si nécessaire
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: backend-service
-spec:
-  selector:
-    app: backend
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 8080
-  type: ClusterIP
-
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: my-postgres-deployment
-  labels:
-    app: postgres
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: postgres-app
-  template:
-    metadata:
-      labels:
-        app: postgres-app
-    spec:
-      containers:
-      - name: postgres
-        image: postgres:15  # Utilisation de l'image officielle PostgreSQL
-        env:
-        - name: POSTGRES_USER
-          valueFrom:
-            secretKeyRef:
-              name: postgres-secret
-              key: username
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: postgres-secret
-              key: password
-        - name: POSTGRES_DB
-          value: "mydb"  # Nom de la base de données
-        ports:
-        - containerPort: 5432  # Port sur lequel PostgreSQL écoute
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: postgres-service
-spec:
-  selector:
-    app: postgres
-  ports:
-    - protocol: TCP
-      port: 5432
-      targetPort: 5432
-  type: ClusterIP
+          value: "disable"
