@@ -1,18 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frontend-deployment
+  name: myfrontend-deployment
   labels:
-    app: frontend
+    app: frontend-app
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: frontend
   template:
     metadata:
       labels:
-        app: frontend
+        app: frontend-app
     spec:
       containers:
       - name:  frontend
@@ -24,10 +24,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: frontend-service
+  name: myfrontend-service
 spec:
   selector:
-    app: frontend
+    app: frontend-app
   type: NodePort  # ou LoadBalancer si tu es sur un cloud ou Minikube avec tunnel
   ports:
     - protocol: TCP
