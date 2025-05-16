@@ -33,4 +33,4 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 80
-      nodePort: 30080  # Port exposé sur la machine hôte (facilement testable sur Minikube)
+      nodePort: 30081  # Port exposé sur la machine hôte (facilement testable sur Minikube)
