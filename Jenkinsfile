@@ -1,82 +1,139 @@
 pipeline {
-    agent any
+  agent any
 
-    environment {
-        KUBECONFIG = "${WORKSPACE}/.kube/config"
-        TRIVY_VERSION = "0.49.1"
+  environment {
+    KUBECONFIG = 'C:\\Users\\pc\\.kube\\config'
+    FRONTEND_IMAGE = 'babs32/frontend-odc:latest'
+    BACKEND_IMAGE  = 'babs32/backend-odc:latest'
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
     }
 
-    stages {
-        stage('Préparation kubeconfig') {
-            steps {
-                // On suppose que tu as ajouté un fichier kubeconfig dans Jenkins ou ton repo
-                // Ici on le copie dans le bon emplacement
-                sh '''
-                    mkdir -p .kube
-                    cp /chemin/vers/ton/kubeconfig .kube/config
-                '''
-            }
+    stage('Terraform Init') {
+      steps {
+        dir('terraform') {
+          bat 'terraform init'
         }
-
-        stage('Terraform Init') {
-            steps {
-                dir('terraform') {
-                    sh 'terraform init'
-                }
-            }
-        }
-
-        stage('Terraform Apply') {
-            steps {
-                dir('terraform') {
-                    sh 'terraform apply -auto-approve'
-                }
-            }
-        }
-
-        stage('Deploy to Kubernetes') {
-            steps {
-                sh 'kubectl apply -f terraform/frontend.yaml'
-            }
-        }
-
-        stage('Install Trivy') {
-            steps {
-                sh '''
-                    curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin ${TRIVY_VERSION}
-                    trivy --version
-                '''
-            }
-        }
-
-        stage('Scan Docker Image - Frontend') {
-            steps {
-                sh 'trivy image my-frontend-image:latest'
-            }
-        }
-
-        stage('Scan Docker Image - Backend') {
-            steps {
-                sh 'trivy image my-backend-image:latest'
-            }
-        }
-
-        stage('Scan Secrets (code source)') {
-            steps {
-                sh 'trivy fs --scanners secret .'
-            }
-        }
-
-        stage('Scan Terraform (misconfigurations)') {
-            steps {
-                sh 'trivy config terraform/'
-            }
-        }
-
-        stage('Scan Kubernetes Cluster (Trivy)') {
-            steps {
-                sh 'trivy k8s cluster'
-            }
-        }
+      }
     }
+
+    stage('Terraform Apply') {
+      steps {
+        dir('terraform') {
+          bat 'terraform apply -auto-approve'
+        }
+      }
+    }
+
+    stage('Deploy to Kubernetes') {
+      steps {
+        bat 'kubectl apply -f terraform/frontend.yaml'
+        bat 'kubectl apply -f terraform/backend.yaml'
+      }
+    }
+
+    stage('Scan Docker Image - Frontend') {
+      steps {
+        bat '''
+          mkdir trivy-reports
+          trivy image --format template --template "@contrib/html.tpl" -o trivy-reports\\frontend-image.html %FRONTEND_IMAGE%
+        '''
+      }
+      post {
+        always {
+          publishHTML(target: [
+            reportName: 'Frontend Image Scan',
+            reportDir: 'trivy-reports',
+            reportFiles: 'frontend-image.html',
+            keepAll: true,
+            alwaysLinkToLastBuild: true
+          ])
+        }
+      }
+    }
+
+    stage('Scan Docker Image - Backend') {
+      steps {
+        bat '''
+          trivy image --format template --template "@contrib/html.tpl" -o trivy-reports\\backend-image.html %BACKEND_IMAGE%
+        '''
+      }
+      post {
+        always {
+          publishHTML(target: [
+            reportName: 'Backend Image Scan',
+            reportDir: 'trivy-reports',
+            reportFiles: 'backend-image.html',
+            keepAll: true,
+            alwaysLinkToLastBuild: true
+          ])
+        }
+      }
+    }
+
+    stage('Scan Secrets (code source)') {
+      steps {
+        bat '''
+          trivy repo --scanners secret --format template --template "@contrib/html.tpl" -o trivy-reports\\secrets.html .
+        '''
+      }
+      post {
+        always {
+          publishHTML(target: [
+            reportName: 'Secrets Scan',
+            reportDir: 'trivy-reports',
+            reportFiles: 'secrets.html',
+            keepAll: true,
+            alwaysLinkToLastBuild: true
+          ])
+        }
+      }
+    }
+
+    stage('Scan Terraform (misconfigurations)') {
+      steps {
+        dir('terraform') {
+          bat '''
+            mkdir ..\\trivy-reports
+            trivy config --format template --template "@contrib/html.tpl" -o ..\\trivy-reports\\terraform.html .
+          '''
+        }
+      }
+      post {
+        always {
+          publishHTML(target: [
+            reportName: 'Terraform Misconfigurations',
+            reportDir: 'trivy-reports',
+            reportFiles: 'terraform.html',
+            keepAll: true,
+            alwaysLinkToLastBuild: true
+          ])
+        }
+      }
+    }
+
+    stage('Scan Kubernetes Cluster (Trivy)') {
+      steps {
+        bat '''
+          trivy k8s --format template --template "@contrib/html.tpl" -o trivy-reports\\k8s.html cluster
+        '''
+      }
+      post {
+        always {
+          publishHTML(target: [
+            reportName: 'Kubernetes Cluster Scan',
+            reportDir: 'trivy-reports',
+            reportFiles: 'k8s.html',
+            keepAll: true,
+            alwaysLinkToLastBuild: true
+          ])
+        }
+      }
+    }
+  }
 }
