@@ -12,30 +12,27 @@ pipeline {
 
         stage('Préparer template HTML') {
             steps {
-                script {
-                    bat '''
-                    if not exist trivy-reports mkdir trivy-reports
-                    curl -o html.tpl https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl
-                    '''
-                }
+                bat '''
+                if not exist trivy-reports mkdir trivy-reports
+                curl -o html.tpl https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl
+                '''
             }
         }
 
         stage('Scan Docker Image - Frontend') {
             steps {
-                script {
-                    bat '''
-                    if not exist trivy-reports mkdir trivy-reports
-                    trivy image --format json -o trivy-reports\\frontend-image.json %FRONTEND_IMAGE%
-                    trivy image --scanners secret --format json -o trivy-reports\\frontend-secrets-image.json %FRONTEND_IMAGE%
-                    '''
-                }
+                bat '''
+                trivy image --format json -o trivy-reports\\frontend-image.json %FRONTEND_IMAGE%
+                trivy image --format template --template @html.tpl -o trivy-reports\\frontend-image.html %FRONTEND_IMAGE%
+                trivy image --scanners secret --format json -o trivy-reports\\frontend-secrets.json %FRONTEND_IMAGE%
+                trivy image --scanners secret --format template --template @html.tpl -o trivy-reports\\frontend-secrets.html %FRONTEND_IMAGE%
+                '''
                 publishHTML(target: [
                     allowMissing: true,
                     alwaysLinkToLastBuild: true,
                     keepAll: true,
                     reportDir: 'trivy-reports',
-                    reportFiles: 'frontend-image.json',
+                    reportFiles: 'frontend-image.html',
                     reportName: 'Frontend Image Scan'
                 ])
                 publishHTML(target: [
@@ -43,7 +40,7 @@ pipeline {
                     alwaysLinkToLastBuild: true,
                     keepAll: true,
                     reportDir: 'trivy-reports',
-                    reportFiles: 'frontend-secrets-image.json',
+                    reportFiles: 'frontend-secrets.html',
                     reportName: 'Frontend Secrets Scan in Image'
                 ])
             }
@@ -51,19 +48,18 @@ pipeline {
 
         stage('Scan Docker Image - Backend') {
             steps {
-                script {
-                    bat '''
-                    if not exist trivy-reports mkdir trivy-reports
-                    trivy image --format json -o trivy-reports\\backend-image.json %BACKEND_IMAGE%
-                    trivy image --scanners secret --format json -o trivy-reports\\backend-secrets-image.json %BACKEND_IMAGE%
-                    '''
-                }
+                bat '''
+                trivy image --format json -o trivy-reports\\backend-image.json %BACKEND_IMAGE%
+                trivy image --format template --template @html.tpl -o trivy-reports\\backend-image.html %BACKEND_IMAGE%
+                trivy image --scanners secret --format json -o trivy-reports\\backend-secrets.json %BACKEND_IMAGE%
+                trivy image --scanners secret --format template --template @html.tpl -o trivy-reports\\backend-secrets.html %BACKEND_IMAGE%
+                '''
                 publishHTML(target: [
                     allowMissing: true,
                     alwaysLinkToLastBuild: true,
                     keepAll: true,
                     reportDir: 'trivy-reports',
-                    reportFiles: 'backend-image.json',
+                    reportFiles: 'backend-image.html',
                     reportName: 'Backend Image Scan'
                 ])
                 publishHTML(target: [
@@ -71,7 +67,7 @@ pipeline {
                     alwaysLinkToLastBuild: true,
                     keepAll: true,
                     reportDir: 'trivy-reports',
-                    reportFiles: 'backend-secrets-image.json',
+                    reportFiles: 'backend-secrets.html',
                     reportName: 'Backend Secrets Scan in Image'
                 ])
             }
@@ -79,35 +75,33 @@ pipeline {
 
         stage('Scan Secrets (code source)') {
             steps {
-                script {
-                    bat '''
-                    trivy fs --scanners secret --format json -o trivy-reports\\secrets-scan.json .
-                    '''
-                }
+                bat '''
+                trivy fs --scanners secret --format json -o trivy-reports\\secrets-scan.json .
+                trivy fs --scanners secret --format template --template @html.tpl -o trivy-reports\\secrets-scan.html .
+                '''
                 publishHTML(target: [
                     allowMissing: true,
                     alwaysLinkToLastBuild: true,
                     keepAll: true,
                     reportDir: 'trivy-reports',
-                    reportFiles: 'secrets-scan.json',
-                    reportName: 'Secrets Scan (code source)'
+                    reportFiles: 'secrets-scan.html',
+                    reportName: 'Secrets Scan'
                 ])
             }
         }
 
         stage('Scan Terraform (misconfigurations)') {
             steps {
-                script {
-                    bat '''
-                    trivy config --format json -o trivy-reports\\terraform-scan.json .
-                    '''
-                }
+                bat '''
+                trivy config --format json -o trivy-reports\\terraform-scan.json .
+                trivy config --format template --template @html.tpl -o trivy-reports\\terraform-scan.html .
+                '''
                 publishHTML(target: [
                     allowMissing: true,
                     alwaysLinkToLastBuild: true,
                     keepAll: true,
                     reportDir: 'trivy-reports',
-                    reportFiles: 'terraform-scan.json',
+                    reportFiles: 'terraform-scan.html',
                     reportName: 'Terraform Scan'
                 ])
             }
