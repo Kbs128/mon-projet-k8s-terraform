@@ -2,9 +2,11 @@ pipeline {
   agent any
 
   environment {
-    KUBECONFIG = 'C:\\Users\\pc\\.kube\\config'
+    KUBECONFIG = "${HOME}/.kube/config"
     FRONTEND_IMAGE = 'babs32/frontend-odc:latest'
     BACKEND_IMAGE  = 'babs32/backend-odc:latest'
+    TRIVY_DIR = './tools/trivy'
+    TRIVY_BIN = './tools/trivy/trivy'
   }
 
   stages {
@@ -37,17 +39,30 @@ pipeline {
       }
     }
 
-    stage('Scan Docker Image - Frontend') {
-      agent {
-        docker {
-          image 'aquasec/trivy:latest'
-          args '-v $HOME/.docker:/root/.docker' // pour accès aux credentials si nécessaire
+    stage('Install Trivy') {
+      steps {
+        script {
+          // Créer le dossier tools si nécessaire
+          sh 'mkdir -p ${TRIVY_DIR}'
+          // Télécharger Trivy si non présent
+          sh '''
+            if [ ! -f "${TRIVY_BIN}" ]; then
+              wget -q https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.1_Linux-64bit.tar.gz -O trivy.tar.gz
+              tar -xzf trivy.tar.gz -C ${TRIVY_DIR}
+              rm -f trivy.tar.gz
+            fi
+          '''
+          // Afficher la version
+          sh "${TRIVY_BIN} --version"
         }
       }
+    }
+
+    stage('Scan Docker Image - Frontend') {
       steps {
         sh '''
           mkdir -p trivy-reports
-          trivy image --format template --template "@contrib/html.tpl" -o trivy-reports/frontend-image.html $FRONTEND_IMAGE
+          ${TRIVY_BIN} image --format template --template "@contrib/html.tpl" -o trivy-reports/frontend-image.html $FRONTEND_IMAGE
         '''
       }
       post {
@@ -64,16 +79,9 @@ pipeline {
     }
 
     stage('Scan Docker Image - Backend') {
-      agent {
-        docker {
-          image 'aquasec/trivy:latest'
-          args '-v $HOME/.docker:/root/.docker'
-        }
-      }
       steps {
         sh '''
-          mkdir -p trivy-reports
-          trivy image --format template --template "@contrib/html.tpl" -o trivy-reports/backend-image.html $BACKEND_IMAGE
+          ${TRIVY_BIN} image --format template --template "@contrib/html.tpl" -o trivy-reports/backend-image.html $BACKEND_IMAGE
         '''
       }
       post {
@@ -90,15 +98,9 @@ pipeline {
     }
 
     stage('Scan Secrets (code source)') {
-      agent {
-        docker {
-          image 'aquasec/trivy:latest'
-        }
-      }
       steps {
         sh '''
-          mkdir -p trivy-reports
-          trivy repo --scanners secret --format template --template "@contrib/html.tpl" -o trivy-reports/secrets.html .
+          ${TRIVY_BIN} repo --scanners secret --format template --template "@contrib/html.tpl" -o trivy-reports/secrets.html .
         '''
       }
       post {
@@ -115,16 +117,11 @@ pipeline {
     }
 
     stage('Scan Terraform (misconfigurations)') {
-      agent {
-        docker {
-          image 'aquasec/trivy:latest'
-        }
-      }
       steps {
         dir('terraform') {
           sh '''
             mkdir -p ../trivy-reports
-            trivy config --format template --template "@contrib/html.tpl" -o ../trivy-reports/terraform.html .
+            ${TRIVY_BIN} config --format template --template "@contrib/html.tpl" -o ../trivy-reports/terraform.html .
           '''
         }
       }
@@ -142,16 +139,9 @@ pipeline {
     }
 
     stage('Scan Kubernetes Cluster (Trivy)') {
-      agent {
-        docker {
-          image 'aquasec/trivy:latest'
-          args '-v /etc:/etc -v $HOME/.kube:/root/.kube'
-        }
-      }
       steps {
         sh '''
-          mkdir -p trivy-reports
-          trivy k8s --format template --template "@contrib/html.tpl" -o trivy-reports/k8s.html cluster
+          ${TRIVY_BIN} k8s --format template --template "@contrib/html.tpl" -o trivy-reports/k8s.html cluster
         '''
       }
       post {
