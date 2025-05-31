@@ -37,23 +37,17 @@ pipeline {
       }
     }
 
-  stage('Install Trivy') {
-  agent {
-    docker {
-      image 'ubuntu:22.04'
-      args '-u root:root'  // Exécuter en root pour apt-get
+    stage('Install Trivy') {
+      steps {
+        sh '''
+          sudo apt-get update && sudo apt-get install -y wget gnupg
+          sudo wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor -o /usr/share/keyrings/trivy.gpg
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb stable main" | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update && sudo apt-get install -y trivy
+          trivy --version
+        '''
+      }
     }
-  }
-  steps {
-    sh '''
-      apt-get update && apt-get install -y wget gnupg
-      wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor -o /usr/share/keyrings/trivy.gpg
-      echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb stable main" | tee /etc/apt/sources.list.d/trivy.list
-      apt-get update && apt-get install -y trivy
-      trivy --version
-    '''
-  }
-}
 
     stage('Scan Docker Image - Frontend') {
       steps {
