@@ -44,10 +44,20 @@ pipeline {
                     try {
                         bat '''
                             mkdir trivy-reports || exit 0
-                            trivy image --format html -o trivy-reports\\frontend-image.html %FRONTEND_IMAGE%
+                            trivy image --format json -o trivy-reports\\frontend-image.json %FRONTEND_IMAGE%
+                        '''
+                        powershell '''
+                            $json = Get-Content "trivy-reports\\frontend-image.json" | ConvertFrom-Json
+                            $html = @"
+                            <html><head><title>Frontend Scan</title></head><body>
+                            <h2>Frontend Docker Image Scan Report</h2>
+                            <pre>$($json | ConvertTo-Json -Depth 10)</pre>
+                            </body></html>
+                            "@
+                            $html | Out-File "trivy-reports\\frontend-image.html" -Encoding utf8
                         '''
                     } catch (Exception e) {
-                        echo "Error scanning frontend image: ${e.getMessage()}"
+                        echo "Erreur scan Frontend: ${e.getMessage()}"
                         currentBuild.result = 'UNSTABLE'
                     }
                 }
@@ -71,10 +81,20 @@ pipeline {
                     try {
                         bat '''
                             mkdir trivy-reports || exit 0
-                            trivy image --format html -o trivy-reports\\backend-image.html %BACKEND_IMAGE%
+                            trivy image --format json -o trivy-reports\\backend-image.json %BACKEND_IMAGE%
+                        '''
+                        powershell '''
+                            $json = Get-Content "trivy-reports\\backend-image.json" | ConvertFrom-Json
+                            $html = @"
+                            <html><head><title>Backend Scan</title></head><body>
+                            <h2>Backend Docker Image Scan Report</h2>
+                            <pre>$($json | ConvertTo-Json -Depth 10)</pre>
+                            </body></html>
+                            "@
+                            $html | Out-File "trivy-reports\\backend-image.html" -Encoding utf8
                         '''
                     } catch (Exception e) {
-                        echo "Error scanning backend image: ${e.getMessage()}"
+                        echo "Erreur scan Backend: ${e.getMessage()}"
                         currentBuild.result = 'UNSTABLE'
                     }
                 }
@@ -98,10 +118,20 @@ pipeline {
                     try {
                         bat '''
                             mkdir trivy-reports || exit 0
-                            trivy repo --scanners secret --format html -o trivy-reports\\secrets.html .
+                            trivy repo --scanners secret --format json -o trivy-reports\\secrets.json .
+                        '''
+                        powershell '''
+                            $json = Get-Content "trivy-reports\\secrets.json" | ConvertFrom-Json
+                            $html = @"
+                            <html><head><title>Secrets Scan</title></head><body>
+                            <h2>Secrets Scan Report</h2>
+                            <pre>$($json | ConvertTo-Json -Depth 10)</pre>
+                            </body></html>
+                            "@
+                            $html | Out-File "trivy-reports\\secrets.html" -Encoding utf8
                         '''
                     } catch (Exception e) {
-                        echo "Error scanning for secrets: ${e.getMessage()}"
+                        echo "Erreur scan Secrets: ${e.getMessage()}"
                         currentBuild.result = 'UNSTABLE'
                     }
                 }
@@ -126,11 +156,21 @@ pipeline {
                         dir('terraform') {
                             bat '''
                                 mkdir ..\\trivy-reports || exit 0
-                                trivy config --format html -o ..\\trivy-reports\\terraform.html .
+                                trivy config --format json -o ..\\trivy-reports\\terraform.json .
                             '''
                         }
+                        powershell '''
+                            $json = Get-Content "trivy-reports\\terraform.json" | ConvertFrom-Json
+                            $html = @"
+                            <html><head><title>Terraform Scan</title></head><body>
+                            <h2>Terraform Misconfigurations</h2>
+                            <pre>$($json | ConvertTo-Json -Depth 10)</pre>
+                            </body></html>
+                            "@
+                            $html | Out-File "trivy-reports\\terraform.html" -Encoding utf8
+                        '''
                     } catch (Exception e) {
-                        echo "Error scanning Terraform: ${e.getMessage()}"
+                        echo "Erreur scan Terraform: ${e.getMessage()}"
                         currentBuild.result = 'UNSTABLE'
                     }
                 }
@@ -154,10 +194,20 @@ pipeline {
                     try {
                         bat '''
                             mkdir trivy-reports || exit 0
-                            trivy k8s --format html -o trivy-reports\\k8s.html cluster
+                            trivy k8s --format json -o trivy-reports\\k8s.json cluster
+                        '''
+                        powershell '''
+                            $json = Get-Content "trivy-reports\\k8s.json" | ConvertFrom-Json
+                            $html = @"
+                            <html><head><title>Kubernetes Scan</title></head><body>
+                            <h2>Kubernetes Cluster Scan Report</h2>
+                            <pre>$($json | ConvertTo-Json -Depth 10)</pre>
+                            </body></html>
+                            "@
+                            $html | Out-File "trivy-reports\\k8s.html" -Encoding utf8
                         '''
                     } catch (Exception e) {
-                        echo "Error scanning Kubernetes: ${e.getMessage()}"
+                        echo "Erreur scan K8s: ${e.getMessage()}"
                         currentBuild.result = 'UNSTABLE'
                     }
                 }
