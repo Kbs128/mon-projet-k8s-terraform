@@ -43,11 +43,8 @@ pipeline {
                 script {
                     try {
                         bat '''
-                            mkdir trivy-reports
-                            trivy image --format template ^
-                            --template "@contrib/html.tpl" ^
-                            -o trivy-reports\\frontend-image.html ^
-                            %FRONTEND_IMAGE%
+                            mkdir trivy-reports || exit 0
+                            trivy image --format html -o trivy-reports\\frontend-image.html %FRONTEND_IMAGE%
                         '''
                     } catch (Exception e) {
                         echo "Error scanning frontend image: ${e.getMessage()}"
@@ -73,10 +70,8 @@ pipeline {
                 script {
                     try {
                         bat '''
-                            trivy image --format template ^
-                            --template "@contrib/html.tpl" ^
-                            -o trivy-reports\\backend-image.html ^
-                            %BACKEND_IMAGE%
+                            mkdir trivy-reports || exit 0
+                            trivy image --format html -o trivy-reports\\backend-image.html %BACKEND_IMAGE%
                         '''
                     } catch (Exception e) {
                         echo "Error scanning backend image: ${e.getMessage()}"
@@ -102,11 +97,8 @@ pipeline {
                 script {
                     try {
                         bat '''
-                            trivy repo --scanners secret ^
-                            --format template ^
-                            --template "@contrib/html.tpl" ^
-                            -o trivy-reports\\secrets.html ^
-                            .
+                            mkdir trivy-reports || exit 0
+                            trivy repo --scanners secret --format html -o trivy-reports\\secrets.html .
                         '''
                     } catch (Exception e) {
                         echo "Error scanning for secrets: ${e.getMessage()}"
@@ -133,11 +125,8 @@ pipeline {
                     try {
                         dir('terraform') {
                             bat '''
-                                mkdir ..\\trivy-reports
-                                trivy config --format template ^
-                                --template "@contrib/html.tpl" ^
-                                -o ..\\trivy-reports\\terraform.html ^
-                                .
+                                mkdir ..\\trivy-reports || exit 0
+                                trivy config --format html -o ..\\trivy-reports\\terraform.html .
                             '''
                         }
                     } catch (Exception e) {
@@ -164,10 +153,8 @@ pipeline {
                 script {
                     try {
                         bat '''
-                            trivy k8s --format template ^
-                            --template "@contrib/html.tpl" ^
-                            -o trivy-reports\\k8s.html ^
-                            cluster
+                            mkdir trivy-reports || exit 0
+                            trivy k8s --format html -o trivy-reports\\k8s.html cluster
                         '''
                     } catch (Exception e) {
                         echo "Error scanning Kubernetes: ${e.getMessage()}"
