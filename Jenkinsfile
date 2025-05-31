@@ -37,19 +37,13 @@ pipeline {
       }
     }
 
-    stage('Install Trivy') {
-      steps {
-        sh '''
-          sudo apt-get update && sudo apt-get install -y wget gnupg
-          sudo wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor -o /usr/share/keyrings/trivy.gpg
-          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb stable main" | sudo tee /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update && sudo apt-get install -y trivy
-          trivy --version
-        '''
-      }
-    }
-
     stage('Scan Docker Image - Frontend') {
+      agent {
+        docker {
+          image 'aquasec/trivy:latest'
+          args '-v $HOME/.docker:/root/.docker' // pour accès aux credentials si nécessaire
+        }
+      }
       steps {
         sh '''
           mkdir -p trivy-reports
@@ -70,8 +64,15 @@ pipeline {
     }
 
     stage('Scan Docker Image - Backend') {
+      agent {
+        docker {
+          image 'aquasec/trivy:latest'
+          args '-v $HOME/.docker:/root/.docker'
+        }
+      }
       steps {
         sh '''
+          mkdir -p trivy-reports
           trivy image --format template --template "@contrib/html.tpl" -o trivy-reports/backend-image.html $BACKEND_IMAGE
         '''
       }
@@ -89,8 +90,14 @@ pipeline {
     }
 
     stage('Scan Secrets (code source)') {
+      agent {
+        docker {
+          image 'aquasec/trivy:latest'
+        }
+      }
       steps {
         sh '''
+          mkdir -p trivy-reports
           trivy repo --scanners secret --format template --template "@contrib/html.tpl" -o trivy-reports/secrets.html .
         '''
       }
@@ -108,6 +115,11 @@ pipeline {
     }
 
     stage('Scan Terraform (misconfigurations)') {
+      agent {
+        docker {
+          image 'aquasec/trivy:latest'
+        }
+      }
       steps {
         dir('terraform') {
           sh '''
@@ -130,8 +142,15 @@ pipeline {
     }
 
     stage('Scan Kubernetes Cluster (Trivy)') {
+      agent {
+        docker {
+          image 'aquasec/trivy:latest'
+          args '-v /etc:/etc -v $HOME/.kube:/root/.kube'
+        }
+      }
       steps {
         sh '''
+          mkdir -p trivy-reports
           trivy k8s --format template --template "@contrib/html.tpl" -o trivy-reports/k8s.html cluster
         '''
       }
